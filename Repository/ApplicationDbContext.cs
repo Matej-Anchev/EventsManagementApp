@@ -1,0 +1,23 @@
+﻿using Domain.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+
+namespace Repository;
+
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : IdentityDbContext(options)
+{
+    public DbSet<EventsAppUser> Users { get; set; }
+    public DbSet<Venue> Venues { get; set; }
+    public DbSet<Section> Sections { get; set; }
+    public DbSet<Seat> Seats { get; set; }
+
+    public DbSet<Event> Events { get; set; }
+
+    // public DbSet<EventsImages> EventsImages { get; set; }
+    public DbSet<EventSectionPricing> EventSectionPricings { get; set; }
+    public DbSet<Reservation> Reservations { get; set; }
+    public DbSet<SeatReservation> SeatReservations { get; set; }
+    public DbSet<Ticket> Tickets { get; set; }
+    public DbSet<EtlSyncLog> EtlSyncLogs { get; set; }
+    public DbSet<ApiClient> ApiClients { get; set; }
+}
