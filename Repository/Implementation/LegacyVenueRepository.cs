@@ -30,19 +30,19 @@ public class LegacyVenueRepository : ILegacyVenueRepository
         }).ToList();
     }
 
-    public async Task<List<Venue>> GetSectionsModifiedSinceAsync(DateTime since)
+    public async Task<List<Section>> GetSectionsModifiedSinceAsync(DateTime since)
     {
-        var legacy = await _dbContext.Venues.Where(x => x.LastModified >= since).ToListAsync();
+        var legacySections = await _dbContext.Sections
+            .AsNoTracking()
+            .Where(s => s.LastModified > since)
+            .ToListAsync();
 
-        return legacy.Select(x => new Venue()
+        return legacySections.Select(ls => new Section
         {
-            Id = GuidHelper.FromLegacyId("Venue", x.VenueId),
-            Name = x.Name,
-            Address = x.Address,
-            City = x.City,
-            Country = x.Country,
-            TotalCapacity = x.TotalCapacity,
-            ZipCode = x.ZipCode,
+            Id = GuidHelper.FromLegacyId("Section", ls.SectionId),
+            VenueId = GuidHelper.FromLegacyId("Venue", ls.VenueId),
+            Name = ls.Name.Trim(),
+            Capacity = ls.Capacity
         }).ToList();
     }
 
