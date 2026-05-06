@@ -4,8 +4,8 @@ namespace Web.Response;
 
 public record EventResponse(
     string Name,
-    string Description,
-    string ImageUrl,
+    string? Description,
+    string? ImageUrl,
     DateTime StartDate,
     DateTime EndDate,
     string? VenueName,

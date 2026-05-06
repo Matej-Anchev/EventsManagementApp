@@ -21,29 +21,36 @@ public class ReservationCleanupBackgroundService : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            using var scope = _serviceScopeFactory.CreateScope();
-            var reservationService = scope.ServiceProvider.GetRequiredService<IReservationService>();
-
-            _logger.LogInformation("Reservation cleanup job started...");
-
-            var reservations = await reservationService.GetAllByDateReservedSince(DateTime.Now.AddMinutes(-15));
-
-            _logger.LogInformation($"Fetched total {reservations.Count} reservations");
-
-            foreach (var reservation in reservations)
+            try
             {
-                try
-                {
-                    _logger.LogInformation($"Expiring reservation with ID: {reservation.Id}");
-                    await reservationService.ExpireAsync(reservation);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Error while expiring reservation with ID: {reservation.Id}");
-                }
-            }
+                using var scope = _serviceScopeFactory.CreateScope();
+                var reservationService = scope.ServiceProvider.GetRequiredService<IReservationService>();
 
-            _logger.LogInformation("Reservation cleanup job finished successfully...");
+                _logger.LogInformation("Reservation cleanup job started...");
+
+                var reservations = await reservationService.GetAllByDateReservedSince(DateTime.Now.AddMinutes(-15));
+
+                _logger.LogInformation($"Fetched total {reservations.Count} reservations");
+
+                foreach (var reservation in reservations)
+                {
+                    try
+                    {
+                        _logger.LogInformation($"Expiring reservation with ID: {reservation.Id}");
+                        await reservationService.ExpireAsync(reservation);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Error while expiring reservation with ID: {reservation.Id}");
+                    }
+                }
+
+                _logger.LogInformation("Reservation cleanup job finished successfully...");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during reservation cleanup job");
+            }
 
             await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
         }
