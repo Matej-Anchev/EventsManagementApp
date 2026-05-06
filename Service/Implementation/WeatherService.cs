@@ -2,6 +2,7 @@
 using Domain.Dto;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Service.Interface;
 
 namespace Service.Implementation;
@@ -15,13 +16,13 @@ public class WeatherService : IWeatherService
     private readonly WeatherApiSettings _weatherApiSettings;
 
     public WeatherService(IEventService eventService, IWeatherApiClient weatherApiClient,
-        ILogger<WeatherService> logger, IMemoryCache memoryCache, WeatherApiSettings weatherApiSettings)
+        ILogger<WeatherService> logger, IMemoryCache memoryCache, IOptions<WeatherApiSettings> weatherApiSettings)
     {
         _eventService = eventService;
         _weatherApiClient = weatherApiClient;
         _logger = logger;
         _memoryCache = memoryCache;
-        _weatherApiSettings = weatherApiSettings;
+        _weatherApiSettings = weatherApiSettings.Value;
     }
 
     public async Task<EventWeatherDto> GetWeatherDataForEventIdAsync(Guid eventId)

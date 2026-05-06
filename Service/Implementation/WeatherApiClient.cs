@@ -3,6 +3,7 @@ using Domain.Configuration;
 using Domain.Dto;
 using Domain.WeatherApiResponse;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Service.Interface;
 
 namespace Service.Implementation;
@@ -13,11 +14,11 @@ public class WeatherApiClient : IWeatherApiClient
     private readonly ILogger<WeatherApiClient> _logger;
     private readonly WeatherApiSettings _settings;
 
-    public WeatherApiClient(HttpClient httpClient, ILogger<WeatherApiClient> logger, WeatherApiSettings settings)
+    public WeatherApiClient(HttpClient httpClient, ILogger<WeatherApiClient> logger, IOptions<WeatherApiSettings> settings)
     {
         _httpClient = httpClient;
         _logger = logger;
-        _settings = settings;
+        _settings = settings.Value;
     }
 
     public async Task<EventWeatherDto> GetWeatherForecastForCityAndCountry(string city, string country)

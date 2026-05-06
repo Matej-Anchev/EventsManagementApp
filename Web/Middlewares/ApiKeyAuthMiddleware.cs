@@ -26,12 +26,12 @@ public class ApiKeyAuthMiddleware
             {
                 Error = "Api Key is Required"
             });
+            return;
         }
-        
+
         Console.WriteLine(authHeader);
-        
-        var client = dbContext.ApiClients.FirstOrDefault(
-            x => x.ApiKey == authHeader.ToString() && x.IsActive);
+
+        var client = dbContext.ApiClients.FirstOrDefault(x => x.ApiKey == authHeader.ToString() && x.IsActive);
 
         if (client == null)
         {
@@ -40,10 +40,11 @@ public class ApiKeyAuthMiddleware
             {
                 Error = "Api Key is not valid"
             });
+            return;
         }
 
         context.Items["ApiClient"] = client;
-        
+
         await _next(context);
     }
 }

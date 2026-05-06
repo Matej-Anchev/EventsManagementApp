@@ -1,7 +1,7 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using Domain.Configuration;
-using Domain.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -17,12 +17,14 @@ using Web.Interceptor;
 using Web.Mapper;
 using Web.Middlewares;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
                        throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+builder.Services.AddScoped<AuditInterceptor>();
+
 builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
     {
         options.UseSqlServer(connectionString);
@@ -34,7 +36,6 @@ builder.Services.AddDbContext<LegacyApplicationDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration
             .GetConnectionString("LegacyVenueDb")));
-
 
 builder.Services.AddControllersWithViews();
 
@@ -53,21 +54,19 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 
 builder.Services.AddRazorPages();
 
-builder.Services.Configure<WeatherApiSettings>(builder.Configuration.GetSection("WeatherApi"));
-
-
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IVenueRepository, VenueRepository>();
 builder.Services.AddScoped<ILegacyVenueRepository, LegacyVenueRepository>();
 
 builder.Services.AddScoped<IEventService, EventService>();
-builder.Services.AddScoped<AuditInterceptor>();
 builder.Services.AddScoped<IVenueService, VenueService>();
 builder.Services.AddScoped<ReservationMapper>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 builder.Services.AddScoped<VenueEtlService>();
 builder.Services.AddScoped<IWeatherService, WeatherService>();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<EventMapper>();
 
 builder.Services.AddMemoryCache();
 
@@ -79,8 +78,6 @@ builder.Services.AddRateLimiter(options =>
     {
         var apiKey = context.Request.Headers["x-api-key"];
 
-        var apiClient = context.Items["ApiClient"] as ApiClient;
-
         return RateLimitPartition.GetFixedWindowLimiter(apiKey.ToString(), _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 60,
@@ -91,13 +88,8 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-
 builder.Services.AddHostedService<ReservationCleanupBackgroundService>();
 builder.Services.AddHostedService<LegacyDbEtlBackgroundService>();
-
-builder.Services.AddScoped<ICurrentUser, CurrentUser>();
-
-builder.Services.AddQuartzHostedService();
 
 builder.Services.AddHttpClient<IWeatherApiClient, WeatherApiClient>((sp, client) =>
 {
@@ -105,10 +97,9 @@ builder.Services.AddHttpClient<IWeatherApiClient, WeatherApiClient>((sp, client)
 
     client.BaseAddress = new Uri(settings.Value.BaseAddress);
     client.Timeout = TimeSpan.FromSeconds(settings.Value.TimeoutSeconds);
-    // client.DefaultRequestHeaders.Add("X-Api-Key", settings.ApiKey);
 });
 
-
+// Quartz: AddQuartz must come before AddQuartzHostedService
 builder.Services.AddQuartz(options =>
 {
     var jobKey = new JobKey("reservation-cleanup", "maintenance");
@@ -122,7 +113,7 @@ builder.Services.AddQuartz(options =>
     });
 });
 
-builder.Services.AddScoped<EventMapper>();
+builder.Services.AddQuartzHostedService();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]
@@ -148,58 +139,23 @@ builder.Services.AddAuthentication(options =>
         };
     });
 
-builder.Services.AddRateLimiter(options =>
-{
-    options.AddPolicy("external api", context =>
-    {
-        return RateLimitPartition.GetFixedWindowLimiter("Test", _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 60,
-            QueueLimit = 0,
-            Window = TimeSpan.FromDays(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-        });
-    });
-});
-/*
-try
-{
-    using var cnx = new SqlConnection(connectionString);
-
-    var evolve = new Evolve(cnx, msg => Console.WriteLine(msg))
-    {
-        Locations = new[] { "Database/Migrations" },
-        IsEraseDisabled = true,
-        OutOfOrder = true
-    };
-
-    evolve.Migrate();
-}
-catch (Exception ex)
-{
-    Console.WriteLine("Migration failed");
-    Console.WriteLine(ex);
-    throw;
-}*/
-
 var app = builder.Build();
-
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseMigrationsEndPoint();
+    app.UseDeveloperExceptionPage();
 }
 else
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 app.UseRouting();
 
+app.UseAuthentication(); // must come before UseAuthorization
 app.UseAuthorization();
 
 app.UseMiddleware<ApiKeyAuthMiddleware>();

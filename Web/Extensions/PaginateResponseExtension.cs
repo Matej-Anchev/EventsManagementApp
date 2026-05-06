@@ -1,17 +1,21 @@
-﻿namespace Web.Extensions;
+﻿using Domain.Dto;
+using Web.Response;
+
+namespace Web.Extensions;
 
 public static class PaginateResponseExtension
 {
-    public static PaginatedResponse<TResult> ToPaginatedResponse<T, TResult>(
-        this PaginatedResponse<T> result,
+    public static PaginateResponse<TResult> ToPaginatedResponse<T, TResult>(
+        this PaginatedResult<T> result,
         Func<T, TResult> mappingFunction)
     {
-        return new PaginatedResponse<TResult>
+        return new PaginateResponse<TResult>
         {
             Items = result.Items.Select(mappingFunction).ToList(),
             TotalCount = result.TotalCount,
+            PageNumber = result.PageNumber,
             PageSize = result.PageSize,
-            CurrentPage = result.CurrentPage
-        }
+            TotalPages = result.TotalPages
+        };
     }
 }

@@ -41,17 +41,17 @@ public class EventMapper
 
     public async Task<EventResponse> DeleteAsync(Guid id)
     {
-        var result = await _eventService.GetByIdNotNullAsync(id);
-        return result.ToResponse();
+        var result = await _eventService.DeleteAsync(id);
+        return result.ToResponse()!;
     }
 
     public async Task<PaginateResponse<EventResponse>> PaginatedGetAllAsync(PaginateRequest request)
     {
         var result = await _eventService.GetAllPagedAsync(request.PageNumber, request.PageSize);
-        return result.ToPaginatedResponse(e => e.ToResponse());
+        return result.ToPaginatedResponse(e => e.ToResponse())!;
     }
 
-    public async Task<EventResponse> UploadImageByIdAsync(Guid eventId, IFormFile file)
+    public async Task<EventResponse?> UploadImageByIdAsync(Guid eventId, IFormFile file)
     {
         using var memoryStream = new MemoryStream();
         await file.CopyToAsync(memoryStream);
@@ -66,7 +66,7 @@ public class EventMapper
         return result.ToResponse();
     }
 
-    public async Task<EventResponse> UploadImageByIdInFileSystemAsync(Guid eventId, IFormFile file)
+    public async Task<EventResponse?> UploadImageByIdInFileSystemAsync(Guid eventId, IFormFile file)
     {
         using var ms = new MemoryStream();
         await file.CopyToAsync(ms);
@@ -74,7 +74,7 @@ public class EventMapper
         var path = await _fileUploadService.UploadFileAsync(
             ms.ToArray(),
             file.FileName);
-        
+
         var result = await _eventService.UpdateImagePathByIdAsync(eventId, path);
 
         return result.ToResponse();
